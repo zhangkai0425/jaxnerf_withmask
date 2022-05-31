@@ -27,7 +27,7 @@ import jax
 import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
-from jaxnerf.nerf import utils
+from nerf import utils
 
 
 def get_dataset(split, args):
@@ -37,9 +37,10 @@ def get_dataset(split, args):
 def convert_to_ndc(origins, directions, focal, w, h, near=1.):
   """Convert a set of rays to NDC coordinates."""
   # Shift ray origins to near plane
+  directions = directions + 1e-6
   t = -(near + origins[Ellipsis, 2]) / directions[Ellipsis, 2]
   origins = origins + t[Ellipsis, None] * directions
-
+  origins = origins + 1e-6
   dx, dy, dz = tuple(np.moveaxis(directions, -1, 0))
   ox, oy, oz = tuple(np.moveaxis(origins, -1, 0))
 
@@ -152,11 +153,16 @@ class Dataset(threading.Thread):
     elif self.batching == "single_image":
       image_index = np.random.randint(0, self.n_examples, ())
       if self.test==True:
-            image_index = 1
+            image_index = 10
       print("image_index::",image_index)
       mask = self.masks[image_index].reshape(-1)
       # print("mask shape::",mask.shape,self.rays[0][0].shape)
-      ray_indices_all = np.arange(self.rays[0][0].shape[0])[mask==True]
+      self.withmask = False
+      if self.withmask:
+            ray_indices_all = np.arange(self.rays[0][0].shape[0])[mask==True]
+      else:
+            ray_indices_all = np.arange(self.rays[0][0].shape[0])
+                
       print("ray_indices_all::",ray_indices_all.shape,mask.sum())
       ray_indices_id = np.random.randint(0, ray_indices_all.shape[0],
                                       (self.batch_size,))
